@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "880883792122",
+    "project_id": "brickbybrick-1134c",
+    "storage_bucket": "brickbybrick-1134c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:880883792122:android:1d8fbc8a4e8a3b2711b143",
+        "android_client_info": {
+          "package_name": "com.example.brickbybrick"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDE4UaOD7Veuy4rOg6szNKM5h173kl1QhE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
