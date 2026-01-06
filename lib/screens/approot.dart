@@ -1,6 +1,6 @@
-import 'package:brickbybrick/core/provider/auth_stateprovider.dart';
-import 'package:brickbybrick/features/auth/presentation/screens/homescreen.dart';
-import 'package:brickbybrick/features/auth/presentation/screens/loginscreen.dart';
+import 'package:brickbybrick/services/backend_providers.dart';
+import 'package:brickbybrick/screens/homescreen.dart';
+import 'package:brickbybrick/screens/loginscreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,7 +9,7 @@ class AppRoot extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
+    final authState = ref.watch(authStateChangesProvider);
 
     return authState.when(
       loading: () =>
