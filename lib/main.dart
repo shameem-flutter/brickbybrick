@@ -1,4 +1,7 @@
 import 'package:brickbybrick/screens/approot.dart';
+import 'package:brickbybrick/screens/profile_screen.dart';
+import 'package:brickbybrick/screens/savings_goals_screen.dart';
+import 'package:brickbybrick/screens/growth_screen.dart';
 import 'package:brickbybrick/utilities/app_theme.dart';
 import 'package:brickbybrick/firebase_options.dart';
 
@@ -18,9 +21,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Low Budget',
-      theme: AppTheme.darkTheme,
-      home: AppRoot(),
+      title: 'BrickByBrick',
+      theme: AppTheme.lightTheme,
+      home: const AppRoot(),
+      routes: {
+          '/profile': (context) => const ProfileScreen(),
+          '/savings-goals': (context) => const SavingsGoalsScreen(),
+          '/growth': (context) => const GrowthScreen(),
+      },
       debugShowCheckedModeBanner: false,
     );
   }

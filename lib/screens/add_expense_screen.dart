@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:brickbybrick/utilities/app_theme.dart';
 import 'package:brickbybrick/services/expense_provider.dart';
+import 'package:brickbybrick/utilities/expense_utils.dart';
+import 'package:brickbybrick/utilities/gap_func.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,38 +17,25 @@ class AddExpenseScreen extends ConsumerStatefulWidget {
 class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
-  
+
   String _selectedCategory = 'Food';
   File? _proofImage;
 
-  // IT-focused categories as requested
   final List<String> _categories = [
     'Food',
     'Rent',
     'Travel',
-    'Office Travel',
-    'Internet & Mobile',
+    'Office',
+    'Shopping',
     'Subscriptions',
     'EMI/Loans',
     'Family Support',
+    'Entertainment',
+    'Health',
     'Emergency',
     'Savings',
-    'Other',
+    'General',
   ];
-
-  final Map<String, IconData> _categoryIcons = {
-    'Food': Icons.restaurant,
-    'Rent': Icons.home,
-    'Travel': Icons.directions_car,
-    'Office Travel': Icons.business_center,
-    'Internet & Mobile': Icons.wifi,
-    'Subscriptions': Icons.subscriptions,
-    'EMI/Loans': Icons.account_balance,
-    'Family Support': Icons.family_restroom,
-    'Emergency': Icons.warning,
-    'Savings': Icons.savings,
-    'Other': Icons.more_horiz,
-  };
 
   @override
   void dispose() {
@@ -55,14 +44,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
-    
-    if (pickedFile != null) {
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
+
+      if (pickedFile == null) return;
+
       setState(() {
         _proofImage = File(pickedFile.path);
       });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
     }
   }
 
@@ -75,26 +74,38 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       return;
     }
 
-    await ref.read(expenseControllerProvider.notifier).addExpense(
-      amount: amount,
-      category: _selectedCategory,
-      description: _descriptionController.text.trim().isEmpty 
-          ? null 
-          : _descriptionController.text.trim(),
-      proofImage: _proofImage,
-    );
+    final hadImage = _proofImage != null;
+
+    await ref
+        .read(expenseControllerProvider.notifier)
+        .addExpense(
+          amount: amount,
+          category: _selectedCategory,
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+          proofImage: _proofImage,
+        );
 
     final state = ref.read(expenseControllerProvider);
     if (state.hasError) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${state.error}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${state.error}')));
       }
     } else {
       if (mounted) {
+        // Check if we had an image but it might not have uploaded
+        final message = hadImage
+            ? 'Expense saved! (Note: Check console if image upload failed)'
+            : 'Expense saved successfully!';
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Expense added successfully!')),
+          SnackBar(
+            content: Text(message),
+            duration: const Duration(seconds: 3),
+          ),
         );
         Navigator.of(context).pop();
       }
@@ -106,125 +117,274 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final isLoading = ref.watch(expenseControllerProvider).isLoading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Add Expense")),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Amount", style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                prefixText: "₹ ",
-                filled: true,
-                fillColor: AppTheme.surface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Text("New Transaction"),
+              _buildAmountInput(),
+              vertGap(48),
+              _buildSectionLabel("Category"),
+              vertGap(24),
+              _buildCategoryGrid(),
+              vertGap(40),
+              _buildSectionLabel("Notes"),
+              vertGap(16),
+              _buildNotesInput(),
+              vertGap(40),
+              _buildSectionLabel("Proof of Purchase"),
+              vertGap(16),
+              _buildProofSection(),
+              vertGap(60),
+              _buildSaveButton(isLoading),
+              vertGap(40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildAmountInput() {
+    return Column(
+      children: [
+        Text(
+          "Amount",
+          style: TextStyle(color: AppTheme.textGrey, fontSize: 16),
+        ),
+        vertGap(8),
+        TextField(
+          controller: _amountController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 56,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -2,
+          ),
+          decoration: InputDecoration(
+            prefixText: "₹",
+            prefixStyle: TextStyle(
+              fontSize: 32,
+              color: AppTheme.primary.withValues(alpha: 0.5),
             ),
-            const SizedBox(height: 24),
-            
-            Text("Category", style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _categories.map((category) {
-                final isSelected = _selectedCategory == category;
-                return ChoiceChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_categoryIcons[category], size: 16),
-                      const SizedBox(width: 4),
-                      Text(category),
-                    ],
-                  ),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedCategory = category;
-                    });
-                  },
-                  selectedColor: AppTheme.primary,
-                  backgroundColor: AppTheme.surface,
-                );
-              }).toList(),
+            border: InputBorder.none,
+            hintText: "0",
+            hintStyle: TextStyle(
+              color: AppTheme.textGrey.withValues(alpha: 0.2),
             ),
-            
-            const SizedBox(height: 24),
-            Text("Description (Optional)", style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: "Add notes...",
-                filled: true,
-                fillColor: AppTheme.surface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            Text("Proof (Optional)", style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            
-            if (_proofImage != null)
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _proofImage!,
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => setState(() => _proofImage = null),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.black54,
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            else
-              OutlinedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.camera_alt),
-                label: const Text("Take Photo"),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 24,
+        crossAxisSpacing: 16,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: _categories.length,
+      itemBuilder: (context, index) {
+        final category = _categories[index];
+        final isSelected = _selectedCategory == category;
+        final icon = ExpenseUtils.getIcon(category);
+
+        return GestureDetector(
+          onTap: () => setState(() => _selectedCategory = category),
+          child: Column(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primary : AppTheme.surface,
+                  shape: BoxShape.circle,
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 8,
+                          ),
+                        ],
+                ),
+                child: Icon(
+                  icon,
+                  color: isSelected ? Colors.white : AppTheme.textBody,
+                  size: 24,
                 ),
               ),
-            
-            const SizedBox(height: 32),
-            SizedBox(
+              vertGap(8),
+              Text(
+                category,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? AppTheme.primary : AppTheme.textGrey,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNotesInput() {
+    return Container(
+      decoration: AppTheme.premiumCard,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextField(
+        controller: _descriptionController,
+        maxLines: 2,
+        decoration: InputDecoration(
+          hintText: "What was this for?",
+          hintStyle: TextStyle(color: AppTheme.textGrey.withValues(alpha: 0.5)),
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProofSection() {
+    if (_proofImage != null) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Image.file(
+              _proofImage!,
+              height: 200,
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : _saveExpense,
-                child: isLoading 
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text("Save Expense"),
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            top: 12,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => setState(() => _proofImage = null),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return GestureDetector(
+      onTap: _showImageSourceSheet,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppTheme.textGrey.withValues(alpha: 0.2),
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.camera_enhance_rounded,
+              color: AppTheme.textGrey,
+              size: 32,
+            ),
+            vertGap(8),
+            Text(
+              "Snap Receipt",
+              style: TextStyle(
+                color: AppTheme.textGrey,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSaveButton(bool isLoading) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _saveExpense,
+        child: isLoading
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Text("Authorize Transaction"),
+      ),
+    );
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

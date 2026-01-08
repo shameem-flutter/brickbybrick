@@ -59,4 +59,5 @@ class DefaultFirebaseOptions {
     projectId: 'brickbybrick-1134c',
     storageBucket: 'brickbybrick-1134c.firebasestorage.app',
   );
+
 }

@@ -26,6 +26,29 @@ class SalaryController extends StateNotifier<AsyncValue<void>> {
     required double savingsSplit,
     required int salaryDate,
   }) async {
+    await updateProfile(
+      salary: salary,
+      rentSplit: rentSplit,
+      foodSplit: foodSplit,
+      travelSplit: travelSplit,
+      savingsSplit: savingsSplit,
+      salaryDate: salaryDate,
+    );
+  }
+
+  Future<void> updateProfile({
+    required double salary,
+    required int salaryDate,
+    String? name,
+    double rentSplit = 0.0,
+    double foodSplit = 0.0,
+    double travelSplit = 0.0,
+    double savingsSplit = 0.0,
+    String? profession,
+    String? incomeType,
+    String? budgetMode,
+    List<BudgetRule>? budgetRules,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final uid = _ref.read(currentUserIdProvider);
@@ -39,12 +62,13 @@ class SalaryController extends StateNotifier<AsyncValue<void>> {
 
       final updatedProfile =
           (existingProfile ?? UserProfile(uid: uid, email: '')).copyWith(
+            name: name,
             monthlySalary: salary,
-            rentSplit: rentSplit,
-            foodSplit: foodSplit,
-            travelSplit: travelSplit,
-            savingsSplit: savingsSplit,
             salaryDate: salaryDate,
+            profession: profession,
+            incomeType: incomeType,
+            budgetMode: budgetMode,
+            budgetRules: budgetRules,
           );
 
       await _ref

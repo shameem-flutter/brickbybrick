@@ -12,7 +12,12 @@
           "package_name": "com.example.brickbybrick"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "880883792122-2h0jgrqosgtcacp5ikugkp8pi31gcmq1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDE4UaOD7Veuy4rOg6szNKM5h173kl1QhE"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "880883792122-2h0jgrqosgtcacp5ikugkp8pi31gcmq1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

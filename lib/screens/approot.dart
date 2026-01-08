@@ -1,5 +1,5 @@
 import 'package:brickbybrick/services/backend_providers.dart';
-import 'package:brickbybrick/screens/homescreen.dart';
+import 'package:brickbybrick/screens/main_screen.dart';
 import 'package:brickbybrick/screens/loginscreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,7 +19,7 @@ class AppRoot extends ConsumerWidget {
         if (user == null) {
           return const LoginScreen();
         } else {
-          return const Homescreen();
+          return const MainScreen();
         }
       },
     );
