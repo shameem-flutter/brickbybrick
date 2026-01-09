@@ -526,7 +526,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    value: rule.category,
+                    initialValue: rule.category,
                     decoration: const InputDecoration(
                       labelText: "Category",
                       border: OutlineInputBorder(),
